@@ -52,7 +52,7 @@ function userPrompt(input: AiGenerateInput): string {
 
 export async function generateRoadmap(input: AiGenerateInput): Promise<AiRoadmap> {
   const model = new ChatOpenAI({
-    model: process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.3-70b-instruct:free',
+    model: process.env.OPENROUTER_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b:free',
     temperature: 0.4,
     apiKey: process.env.OPENROUTER_API_KEY,
     maxTokens: 2000,
