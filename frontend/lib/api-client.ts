@@ -1,0 +1,170 @@
+import type { CanvasNode, CanvasEdge } from '@/types'
+
+/**
+ * Typed client for the backend, routed through the same-origin proxy
+ * (`/api/proxy/*`) which injects the Bearer token. See app/api/proxy.
+ */
+
+const BASE = '/api/proxy'
+
+export type Visibility = 'private' | 'unlisted' | 'public'
+export type ProgressStatus = 'todo' | 'in_progress' | 'done'
+
+export interface RoadmapSummary {
+  id: string
+  title: string
+  description?: string
+  visibility: Visibility
+  shareSlug?: string
+  tags: string[]
+  coverUrl?: string
+  viewCount: number
+  createdAt: string
+  updatedAt: string
+  /** Completion stats + per-type node counts (present on the list endpoint). */
+  totalSteps?: number
+  doneSteps?: number
+  counts?: { step: number; milestone: number; note: number; group: number }
+}
+
+export interface RoadmapFull extends RoadmapSummary {
+  nodes: CanvasNode[]
+  edges: CanvasEdge[]
+}
+
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
+  if (!res.ok) {
+    let msg = res.statusText
+    try {
+      const body = await res.json()
+      msg = body?.error ?? msg
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(res.status, msg)
+  }
+  if (res.status === 204) return undefined as T
+  return res.json() as Promise<T>
+}
+
+/** Strip React Flow runtime fields; keep only what the backend persists. */
+function serializeGraph(nodes: CanvasNode[], edges: CanvasEdge[]) {
+  // Dedupe by id so a stray duplicate can't trigger a PK collision on save.
+  const uniqNodes = [...new Map(nodes.map((n) => [n.id, n])).values()]
+  const uniqEdges = [...new Map(edges.map((e) => [e.id, e])).values()]
+  return {
+    nodes: uniqNodes.map((n) => ({
+      id: n.id,
+      type: n.type,
+      position: n.position,
+      width: n.width ?? null,
+      height: n.height ?? null,
+      parentId: n.parentId ?? null,
+      data: n.data,
+    })),
+    edges: uniqEdges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: typeof e.label === 'string' ? e.label : null,
+      style: e.style ?? null,
+    })),
+  }
+}
+
+export const api = {
+  listRoadmaps: () => request<{ roadmaps: RoadmapSummary[] }>('/roadmaps'),
+
+  createRoadmap: (title?: string) =>
+    request<{ roadmap: RoadmapSummary }>('/roadmaps', {
+      method: 'POST',
+      body: JSON.stringify({ title }),
+    }),
+
+  getRoadmap: (id: string) => request<{ roadmap: RoadmapFull }>(`/roadmaps/${id}`),
+
+  updateRoadmap: (
+    id: string,
+    patch: Partial<Pick<RoadmapSummary, 'title' | 'description' | 'tags' | 'visibility' | 'coverUrl'>>,
+  ) =>
+    request<{ roadmap: RoadmapSummary }>(`/roadmaps/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+
+  deleteRoadmap: (id: string) =>
+    request<void>(`/roadmaps/${id}`, { method: 'DELETE' }),
+
+  saveGraph: (id: string, nodes: CanvasNode[], edges: CanvasEdge[]) =>
+    request<{ ok: boolean; nodeCount: number; edgeCount: number }>(
+      `/roadmaps/${id}/graph`,
+      { method: 'PATCH', body: JSON.stringify(serializeGraph(nodes, edges)) },
+    ),
+
+  importRoadmaps: (
+    roadmaps: {
+      localId: string
+      title?: string
+      description?: string
+      nodes: CanvasNode[]
+      edges: CanvasEdge[]
+    }[],
+  ) =>
+    request<{ idMap: Record<string, string> }>('/roadmaps/import', {
+      method: 'POST',
+      body: JSON.stringify({
+        roadmaps: roadmaps.map((r) => ({
+          localId: r.localId,
+          title: r.title,
+          description: r.description,
+          ...serializeGraph(r.nodes, r.edges),
+        })),
+      }),
+    }),
+
+  generateRoadmap: (input: { goal: string; level?: string; timeBudget?: string }) =>
+    request<{ nodes: CanvasNode[]; edges: CanvasEdge[]; cached: boolean }>('/ai/generate', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  signUpload: () =>
+    request<{
+      signature: string
+      timestamp: number
+      folder: string
+      apiKey: string
+      cloudName: string
+      uploadUrl: string
+    }>('/uploads/sign', { method: 'POST' }),
+
+  youtubeMetadata: (url: string) =>
+    request<{ title: string; thumbnail: string; author: string }>(
+      `/youtube/metadata?url=${encodeURIComponent(url)}`,
+    ),
+
+  getProgress: (roadmapId: string) =>
+    request<{ progress: { nodeId: string; status: ProgressStatus; completedAt: string | null }[] }>(
+      `/progress/${roadmapId}`,
+    ),
+
+  setProgress: (roadmapId: string, nodeId: string, status: ProgressStatus) =>
+    request<{ progress: { nodeId: string; status: ProgressStatus; completedAt: string | null } }>(
+      '/progress',
+      { method: 'POST', body: JSON.stringify({ roadmapId, nodeId, status }) },
+    ),
+
+  forkRoadmap: (id: string) =>
+    request<{ roadmap: RoadmapSummary }>(`/roadmaps/${id}/fork`, { method: 'POST' }),
+}
