@@ -1,0 +1,167 @@
+// Trailmap data model — single source of truth for the backend.
+// Mirrors frontend/prisma/schema.prisma. Runtime uses the Neon driver adapter
+// (see src/db/prisma.ts); migrations read the URL from prisma.config.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?  @map("avatar_url")
+  plan      Plan     @default(free)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  roadmaps      Roadmap[]
+  progress      NodeProgress[]
+  follows       RoadmapFollow[]
+  aiGenerations AiGeneration[]
+
+  @@map("users")
+}
+
+enum Plan {
+  free
+  pro
+}
+
+model Roadmap {
+  id          String     @id @default(uuid())
+  ownerId     String     @map("owner_id")
+  title       String
+  description String?
+  visibility  Visibility @default(private)
+  shareSlug   String?    @unique @map("share_slug")
+  isTemplate  Boolean    @default(false) @map("is_template")
+  forkedFrom  String?    @map("forked_from")
+  tags        String[]
+  coverUrl    String?    @map("cover_url")
+  viewCount   Int        @default(0) @map("view_count")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  owner         User            @relation(fields: [ownerId], references: [id])
+  nodes         Node[]
+  edges         Edge[]
+  progress      NodeProgress[]
+  follows       RoadmapFollow[]
+  aiGenerations AiGeneration[]
+
+  @@map("roadmaps")
+}
+
+enum Visibility {
+  private
+  unlisted
+  public
+}
+
+model Node {
+  id        String   @id @default(uuid())
+  roadmapId String   @map("roadmap_id")
+  type      NodeType
+  positionX Float    @map("position_x")
+  positionY Float    @map("position_y")
+  width     Float?
+  height    Float?
+  parentId  String?  @map("parent_id")
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  roadmap  Roadmap        @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  parent   Node?          @relation("NodeChildren", fields: [parentId], references: [id])
+  children Node[]         @relation("NodeChildren")
+  progress NodeProgress[]
+
+  @@map("nodes")
+}
+
+enum NodeType {
+  step
+  milestone
+  group
+  note
+}
+
+model Edge {
+  id           String  @id @default(uuid())
+  roadmapId    String  @map("roadmap_id")
+  sourceNodeId String  @map("source_node_id")
+  targetNodeId String  @map("target_node_id")
+  label        String?
+  style        Json?
+
+  roadmap Roadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@map("edges")
+}
+
+model NodeProgress {
+  id          String         @id @default(uuid())
+  userId      String         @map("user_id")
+  nodeId      String         @map("node_id")
+  roadmapId   String         @map("roadmap_id")
+  status      ProgressStatus
+  completedAt DateTime?      @map("completed_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  node    Node    @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  roadmap Roadmap @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, nodeId])
+  @@map("node_progress")
+}
+
+enum ProgressStatus {
+  todo
+  in_progress
+  done
+}
+
+model RoadmapFollow {
+  userId    String   @map("user_id")
+  roadmapId String   @map("roadmap_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  roadmap Roadmap @relation(fields: [roadmapId], references: [id])
+
+  @@id([userId, roadmapId])
+  @@map("roadmap_follows")
+}
+
+model AiGeneration {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  roadmapId  String?  @map("roadmap_id")
+  kind       AiKind
+  promptHash String   @map("prompt_hash")
+  prompt     String
+  response   Json
+  tokenIn    Int?     @map("token_in")
+  tokenOut   Int?     @map("token_out")
+  costUsd    Decimal? @map("cost_usd") @db.Decimal(10, 6)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user    User?    @relation(fields: [userId], references: [id])
+  roadmap Roadmap? @relation(fields: [roadmapId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([promptHash])
+  @@map("ai_generations")
+}
+
+enum AiKind {
+  generate
+  suggest_next
+  find_resource
+  summarize
+}
