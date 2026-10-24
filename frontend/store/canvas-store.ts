@@ -11,12 +11,23 @@ import {
 } from '@xyflow/react'
 import { wouldCreateCycle } from '@/lib/dag'
 
+/**
+ * Changes React Flow sends that aren't edits: selection, and the size it
+ * measures for each node on render. A resize from NodeResizer also arrives as
+ * a 'dimensions' change, but with `resizing` set, and that one is an edit.
+ */
+function isCosmetic(change: NodeChange<CanvasNode> | EdgeChange) {
+  return change.type === 'select' || (change.type === 'dimensions' && change.resizing === undefined)
+}
+
 interface CanvasState {
   roadmapId: string | null
   nodes: CanvasNode[]
   edges: CanvasEdge[]
   selectedNodeId: string | null
   isDirty: boolean
+  /** The last autosave failed (it's being retried). */
+  saveFailed: boolean
 
   setRoadmapId: (id: string) => void
   setNodes: (nodes: CanvasNode[]) => void
@@ -31,17 +42,30 @@ interface CanvasState {
   deleteNode: (id: string) => void
   selectNode: (id: string | null) => void
   markClean: () => void
+  /** Flags the graph for saving after a change made outside the actions here (undo/redo). */
+  markDirty: () => void
+  setSaveFailed: (failed: boolean) => void
   loadRoadmap: (nodes: CanvasNode[], edges: CanvasEdge[]) => void
 }
 export const useCanvasStore = create<CanvasState>()( 
   // temporal allows us to undo/redo changes to the canvas state, with a limit of 50 snapshots
   temporal(
-    (set) => ({
+    (set) => {
+      // Apply a change without recording an undo step (unless already paused, e.g. mid-drag).
+      const untracked = (fn: () => void) => {
+        const t = useCanvasStore.temporal.getState()
+        if (!t.isTracking) return fn()
+        t.pause()
+        fn()
+        t.resume()
+      }
+      return {
       roadmapId: null,
       nodes: [],
       edges: [],
       selectedNodeId: null,
       isDirty: false,
+      saveFailed: false,
 
       setRoadmapId: (id) => set({ roadmapId: id }),
 
@@ -49,17 +73,19 @@ export const useCanvasStore = create<CanvasState>()(
 
       setEdges: (edges) => set({ edges, isDirty: true }),
 
-      onNodesChange: (changes) =>
-        set((state) => ({
-          nodes: applyNodeChanges(changes, state.nodes),
-          isDirty: true,
-        })),
+      // Selecting or measuring nodes isn't an edit: it shouldn't trigger a save
+      // or become an undo step that seems to do nothing.
+      onNodesChange: (changes) => {
+        const apply = () => set((state) => ({ nodes: applyNodeChanges(changes, state.nodes) }))
+        if (changes.every(isCosmetic)) untracked(apply)
+        else set((state) => ({ nodes: applyNodeChanges(changes, state.nodes), isDirty: true }))
+      },
 
-      onEdgesChange: (changes) =>
-        set((state) => ({
-          edges: applyEdgeChanges(changes, state.edges),
-          isDirty: true,
-        })),
+      onEdgesChange: (changes) => {
+        const apply = () => set((state) => ({ edges: applyEdgeChanges(changes, state.edges) }))
+        if (changes.every(isCosmetic)) untracked(apply)
+        else set((state) => ({ edges: applyEdgeChanges(changes, state.edges), isDirty: true }))
+      },
 
       onConnect: (connection) =>
         set((state) => {
@@ -108,12 +134,20 @@ export const useCanvasStore = create<CanvasState>()(
 
       markClean: () => set({ isDirty: false }),
 
-      loadRoadmap: (nodes, edges) => set({ nodes, edges, isDirty: false }),
-    }),
+      markDirty: () => set({ isDirty: true }),
+
+      setSaveFailed: (failed) => set({ saveFailed: failed }),
+
+      loadRoadmap: (nodes, edges) => set({ nodes, edges, isDirty: false, saveFailed: false }),
+      }
+    },
     {
       limit: 50,
       // Only snapshot nodes+edges — ignore selection, dirty flag, roadmapId
-      partialize: (state) => ({ nodes: state.nodes, edges: state.edges }), //partialize tells zundo which slice of state to snapshot for undo/redo history. Here it only snapshots nodes and edges, ignoring other state properties like selectedNodeId, isDirty, and roadmapId. This ensures that undo/redo operations only affect the visual elements of the canvas, while preserving the user's selection and other metadata.
+      partialize: (state) => ({ nodes: state.nodes, edges: state.edges }),
+      // Without this every set() (selecting a node, marking the graph saved) adds an
+      // identical snapshot, and Undo appears to do nothing for several clicks.
+      equality: (past, current) => past.nodes === current.nodes && past.edges === current.edges, //partialize tells zundo which slice of state to snapshot for undo/redo history. Here it only snapshots nodes and edges, ignoring other state properties like selectedNodeId, isDirty, and roadmapId. This ensures that undo/redo operations only affect the visual elements of the canvas, while preserving the user's selection and other metadata.
     },
   ),
 )

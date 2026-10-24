@@ -109,6 +109,13 @@ router.get('/:roadmapId', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const { roadmapId, nodeId, status } = progressSchema.parse(req.body ?? {})
+    // The node must be in that roadmap, and the roadmap one the user can see:
+    // their own, or one that's been shared.
+    const node = await prisma.node.findFirst({
+      where: { id: nodeId, roadmapId, roadmap: { OR: [{ ownerId: req.user!.id }, { visibility: { not: 'private' } }] } },
+      select: { id: true },
+    })
+    if (!node) return res.status(404).json({ error: 'Not found' })
     const completedAt = status === 'done' ? new Date() : null
     const row = await prisma.nodeProgress.upsert({
       where: { userId_nodeId: { userId: req.user!.id, nodeId } },
