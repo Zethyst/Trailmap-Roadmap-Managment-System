@@ -119,7 +119,10 @@ function CanvasInner({ localInit = true, autosaveMode = 'local', readOnly = fals
       import('@/lib/local-db')
         .then(({ getRoadmap }) =>
           getRoadmap(stored).then((r) => {
-            if (r) loadRoadmap(r.nodes, r.edges)
+            if (!r) return
+            loadRoadmap(r.nodes, r.edges)
+            // Loading isn't an edit; don't let undo step back to the blank canvas.
+            useCanvasStore.temporal.getState().clear()
           }),
         )
         .finally(() => setLocalReady(true))
@@ -129,6 +132,11 @@ function CanvasInner({ localInit = true, autosaveMode = 'local', readOnly = fals
       setRoadmapId(id)
       queueMicrotask(() => setLocalReady(true))
     }
+    // The store may still hold a roadmap from another page (and its undo
+    // history); start this canvas blank until the local one has loaded, so
+    // that graph is never shown here or autosaved under the local id.
+    loadRoadmap([], [])
+    useCanvasStore.temporal.getState().clear()
   }, [setRoadmapId, loadRoadmap, localInit])
 
   // When someone clicks on the canvas pane (not on a node), we want to deselect any selected node and close the sidebar. This is a common UX pattern to allow users to easily exit node editing mode and return to the main canvas view.
@@ -181,7 +189,9 @@ function CanvasInner({ localInit = true, autosaveMode = 'local', readOnly = fals
               style={{ backgroundColor: '#07190f' }}
             />
             <Controls />
+            {/* On a phone the minimap would cover a third of the canvas. */}
             <MiniMap
+              className="max-sm:hidden!"
               zoomable
               pannable
               style={{ backgroundColor: '#0f261b' }}

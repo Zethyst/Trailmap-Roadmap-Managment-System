@@ -10,6 +10,7 @@ import { LinkBlockComponent } from '@/components/blocks/LinkBlock'
 import { VideoBlockComponent } from '@/components/blocks/VideoBlock'
 import { ChecklistBlockComponent } from '@/components/blocks/ChecklistBlock'
 import { ImageBlockComponent } from '@/components/blocks/ImageBlock'
+import { normalizeUrl } from '@/lib/url'
 
 const NODE_COLORS: { name: string; bg: string }[] = [
   { name: 'blue', bg: 'bg-blue-400' },
@@ -128,7 +129,8 @@ export function NodePanel() {
     patchData({ blocks: [...data.blocks, newBlock] })
   }
 
-  function commitLink(url: string) {
+  function commitLink(input: string) {
+    const url = normalizeUrl(input)
     let favicon: string | undefined
     try {
       const domain = new URL(url).hostname
@@ -147,7 +149,8 @@ export function NodePanel() {
     setAddingLink(false)
   }
 
-  function commitVideo(url: string) {
+  function commitVideo(input: string) {
+    const url = normalizeUrl(input)
     const block: ContentBlock = {
       id: crypto.randomUUID(),
       type: 'video',
@@ -259,6 +262,7 @@ export function NodePanel() {
                       <TextBlockComponent
                         block={block}
                         onChange={(b) => updateBlock(b)}
+                        tone="panel"
                       />
                     </div>
                   )
@@ -293,6 +297,7 @@ export function NodePanel() {
                       <ChecklistBlockComponent
                         block={block}
                         onChange={(b) => updateBlock(b)}
+                        tone="panel"
                       />
                     </div>
                   )

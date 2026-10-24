@@ -13,6 +13,10 @@ interface ProgressState {
   reset: () => void
 }
 
+// Each node's status writes are sent one after another, so a quick double
+// click can't reach the server in the wrong order and leave it disagreeing with the UI.
+const nodeQueues = new Map<string, Promise<unknown>>()
+
 export const useProgressStore = create<ProgressState>((set, get) => ({
   roadmapId: null,
   statuses: {},
@@ -40,11 +44,15 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
 
     // Optimistic update.
     set({ statuses: { ...statuses, [nodeId]: next } })
+    const request = (nodeQueues.get(nodeId) ?? Promise.resolve()).then(() => api.setProgress(roadmapId, nodeId, next))
+    nodeQueues.set(nodeId, request.catch(() => {}))
     try {
-      await api.setProgress(roadmapId, nodeId, next)
+      await request
     } catch {
-      // Revert on failure.
-      set((s) => ({ statuses: { ...s.statuses, [nodeId]: prev ?? 'todo' } }))
+      // Revert on failure, unless the user has toggled again or moved to another roadmap since.
+      if (get().roadmapId === roadmapId && get().statuses[nodeId] === next) {
+        set((s) => ({ statuses: { ...s.statuses, [nodeId]: prev ?? 'todo' } }))
+      }
     }
   },
 

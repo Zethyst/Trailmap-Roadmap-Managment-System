@@ -64,6 +64,8 @@ export function CanvasToolbar() {
   const handleAdd = useAddNodeAtCenter()
   const setGenerateOpen = useUIStore((s) => s.setGenerateOpen)
   const { undo, redo, pastStates, futureStates } = useStore(useCanvasStore.temporal)
+  // zundo restores nodes/edges but not isDirty; flag it so the undo is saved too.
+  const markDirty = useCanvasStore((s) => s.markDirty)
 
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 rounded-2xl border border-white/10 bg-gray-950/80 backdrop-blur-md px-2 py-1.5 shadow-xl">
@@ -96,7 +98,7 @@ export function CanvasToolbar() {
       <div className="mx-1.5 h-4 w-px bg-white/10" />
 
       <button
-        onClick={() => undo()}
+        onClick={() => { undo(); markDirty() }}
         disabled={pastStates.length === 0}
         className="rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-20 transition-colors"
         title="Undo"
@@ -104,7 +106,7 @@ export function CanvasToolbar() {
         <Undo2 size={15} />
       </button>
       <button
-        onClick={() => redo()}
+        onClick={() => { redo(); markDirty() }}
         disabled={futureStates.length === 0}
         className="rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-20 transition-colors"
         title="Redo"
