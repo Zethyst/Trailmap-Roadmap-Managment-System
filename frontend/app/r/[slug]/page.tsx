@@ -21,16 +21,19 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const roadmap = await fetchRoadmap(slug)
-  if (!roadmap) return { title: 'Trailmap' }
+  if (!roadmap) return { title: 'Roadmap not found', robots: { index: false } }
   const steps = (roadmap.nodes ?? []).filter((n) => n.type === 'step' || n.type === 'milestone').length
   const description =
     roadmap.description || `A ${steps}-step learning roadmap on Trailmap. Follow it, or fork it into your own.`
-  const title = `${roadmap.title} · Trailmap`
+  // The root layout's title template adds " · Trailmap" to the page title;
+  // OG/Twitter titles don't go through the template, so they carry it themselves.
+  const shareTitle = `${roadmap.title} · Trailmap`
   return {
-    title,
+    title: roadmap.title,
     description,
-    openGraph: { title, description, type: 'article' },
-    twitter: { card: 'summary', title, description },
+    alternates: { canonical: `/r/${slug}` },
+    openGraph: { title: shareTitle, description, type: 'article', url: `/r/${slug}` },
+    twitter: { card: 'summary_large_image', title: shareTitle, description },
   }
 }
 
