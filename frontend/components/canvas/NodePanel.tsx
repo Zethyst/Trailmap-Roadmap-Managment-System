@@ -262,6 +262,7 @@ export function NodePanel() {
                       <TextBlockComponent
                         block={block}
                         onChange={(b) => updateBlock(b)}
+                        tone="panel"
                       />
                     </div>
                   )
@@ -296,6 +297,7 @@ export function NodePanel() {
                       <ChecklistBlockComponent
                         block={block}
                         onChange={(b) => updateBlock(b)}
+                        tone="panel"
                       />
                     </div>
                   )

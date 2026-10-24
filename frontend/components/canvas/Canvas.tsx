@@ -189,7 +189,9 @@ function CanvasInner({ localInit = true, autosaveMode = 'local', readOnly = fals
               style={{ backgroundColor: '#07190f' }}
             />
             <Controls />
+            {/* On a phone the minimap would cover a third of the canvas. */}
             <MiniMap
+              className="max-sm:hidden!"
               zoomable
               pannable
               style={{ backgroundColor: '#0f261b' }}
