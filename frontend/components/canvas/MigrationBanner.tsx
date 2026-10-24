@@ -80,7 +80,7 @@ export function MigrationBanner() {
   const plural = count === 1 ? 'roadmap' : 'roadmaps'
 
   return (
-    <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-white/10 bg-neutral-900/95 px-4 py-2.5 text-sm shadow-xl backdrop-blur">
+    <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 animate-in fade-in-0 slide-in-from-bottom-4 duration-500 items-center gap-3 rounded-2xl border border-white/10 bg-neutral-900/95 px-4 py-2.5 text-sm shadow-xl backdrop-blur">
       <Cloud size={16} className="shrink-0 text-blue-400" />
 
       {status !== 'authenticated' ? (

@@ -5,6 +5,8 @@ interface ProgressState {
   /** Roadmap progress is currently loaded for (null = tracking disabled, e.g. local canvas). */
   roadmapId: string | null
   statuses: Record<string, ProgressStatus>
+  /** True once the server's statuses for `roadmapId` have arrived (or failed to). */
+  loaded: boolean
 
   load: (roadmapId: string) => Promise<void>
   toggleDone: (nodeId: string) => Promise<void>
@@ -14,17 +16,19 @@ interface ProgressState {
 export const useProgressStore = create<ProgressState>((set, get) => ({
   roadmapId: null,
   statuses: {},
+  loaded: false,
 
   load: async (roadmapId) => {
-    set({ roadmapId, statuses: {} })
+    set({ roadmapId, statuses: {}, loaded: false })
     try {
       const { progress } = await api.getProgress(roadmapId)
       const statuses: Record<string, ProgressStatus> = {}
       for (const p of progress) statuses[p.nodeId] = p.status
       // Guard against a race if the roadmap changed mid-fetch.
-      if (get().roadmapId === roadmapId) set({ statuses })
+      if (get().roadmapId === roadmapId) set({ statuses, loaded: true })
     } catch {
       /* leave empty on failure */
+      if (get().roadmapId === roadmapId) set({ loaded: true })
     }
   },
 
@@ -44,5 +48,5 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     }
   },
 
-  reset: () => set({ roadmapId: null, statuses: {} }),
+  reset: () => set({ roadmapId: null, statuses: {}, loaded: false }),
 }))

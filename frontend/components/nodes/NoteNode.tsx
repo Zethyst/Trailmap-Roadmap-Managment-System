@@ -22,7 +22,7 @@ function NoteNode({ data, id, selected }: NodeProps<CanvasNode>) {
   const blockCount = data.blocks.length
 
   return (
-    <div className={cn('relative w-[190px]', selected ? 'note-shadow-selected' : 'note-shadow')}>
+    <div className={cn('tm-pop-in relative w-[190px]', selected ? 'note-shadow-selected' : 'note-shadow')}>
 
       {/* ── Paper ───────────────────────────────────────────────────── */}
       <div

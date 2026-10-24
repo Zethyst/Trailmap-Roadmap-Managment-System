@@ -30,7 +30,7 @@ function MilestoneNode({ data, id, selected }: NodeProps<CanvasNode>) {
   const { done } = useNodeDone(id)
 
   return (
-    <div className={cn('relative w-[220px] transition-opacity', done && 'opacity-60', selected ? 'note-shadow-selected' : 'note-shadow')}>
+    <div className={cn('tm-pop-in relative w-[220px] transition-opacity', done && 'opacity-60', selected ? 'note-shadow-selected' : 'note-shadow')}>
 
       {/* ── Main card ───────────────────────────────────────────────── */}
       <div

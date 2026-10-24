@@ -68,14 +68,14 @@ export function GenerateModal({ open, onClose }: { open: boolean; onClose: () =>
       className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
       onMouseDown={onClose}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200" />
       <div
-        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl"
+        className="relative w-full max-w-md overflow-hidden rounded-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-200 border border-white/10 bg-neutral-900 shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Sparkles size={16} className="text-violet-400" />
+            <Sparkles size={16} className="animate-pulse text-violet-400" />
             Generate a roadmap with AI
           </h3>
           <button onClick={onClose} className="rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white">

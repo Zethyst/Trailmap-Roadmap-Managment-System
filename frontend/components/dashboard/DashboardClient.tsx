@@ -17,6 +17,7 @@ import {
 } from '@/hooks/use-roadmaps'
 import type { RoadmapSummary, Visibility } from '@/lib/api-client'
 import { UserMenu } from '@/components/auth/UserMenu'
+import { useCountUp } from '@/hooks/use-motion'
 import { CircularProgress } from './CircularProgress'
 
 const VIS_META: Record<Visibility, { icon: typeof Lock; label: string }> = {
@@ -31,7 +32,7 @@ export function DashboardClient() {
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
-      <header className="mb-8 flex items-center justify-between">
+      <header className="tm-fade-up mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Your roadmaps</h1>
           <p className="text-sm text-white/50">Build, organise and share your learning paths</p>
@@ -39,9 +40,9 @@ export function DashboardClient() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setCreating(true)}
-            className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-100"
+            className="group flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-medium text-gray-900 transition-all hover:-translate-y-0.5 hover:bg-gray-100 active:translate-y-0"
           >
-            <Plus size={16} />
+            <Plus size={16} className="transition-transform duration-300 group-hover:rotate-90" />
             New roadmap
           </button>
           <UserMenu />
@@ -50,12 +51,13 @@ export function DashboardClient() {
 
       {roadmaps && roadmaps.length > 0 && <StatsBar roadmaps={roadmaps} />}
 
-      {isLoading && <p className="text-white/50">Loading…</p>}
+      {isLoading && <DashboardSkeleton />}
       {isError && <p className="text-red-400">Couldn’t load your roadmaps.</p>}
 
       {roadmaps && roadmaps.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-white/15 p-12 text-center">
-          <p className="text-white/60">No roadmaps yet.</p>
+        <div className="tm-fade-up rounded-2xl border border-dashed border-white/15 p-12 text-center">
+          <EmptyTrail />
+          <p className="mt-4 text-white/60">No roadmaps yet. Every journey starts with a first step.</p>
           <button
             onClick={() => setCreating(true)}
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
@@ -67,8 +69,14 @@ export function DashboardClient() {
 
       {roadmaps && roadmaps.length > 0 && (
         <div className="space-y-3">
-          {roadmaps.map((r) => (
-            <RoadmapRow key={r.id} roadmap={r} />
+          {roadmaps.map((r, i) => (
+            <div
+              key={r.id}
+              className="tm-fade-up"
+              style={{ '--tm-delay': `${Math.min(i, 8) * 60 + 120}ms` } as React.CSSProperties}
+            >
+              <RoadmapRow roadmap={r} />
+            </div>
           ))}
         </div>
       )}
@@ -94,6 +102,53 @@ function StatsBar({ roadmaps }: { roadmaps: RoadmapSummary[] }) {
   )
 }
 
+function DashboardSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading roadmaps">
+      <div className="mb-6 grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="tm-skeleton h-[74px] rounded-xl border border-white/5" />
+        ))}
+      </div>
+      <div className="space-y-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex items-center gap-4 rounded-2xl border border-white/5 p-4">
+            <div className="tm-skeleton h-14 w-14 rounded-xl" />
+            <div className="flex-1 space-y-2">
+              <div className="tm-skeleton h-4 w-2/5 rounded" />
+              <div className="tm-skeleton h-3 w-3/5 rounded" />
+            </div>
+            <div className="tm-skeleton h-14 w-14 rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Small looping illustration for the empty dashboard: a trail drawing toward a flag. */
+function EmptyTrail() {
+  return (
+    <svg viewBox="0 0 160 80" className="mx-auto h-20 w-40" aria-hidden>
+      <path
+        d="M14 64 C 50 64, 50 22, 86 30 S 126 54, 140 20"
+        pathLength={1}
+        fill="none"
+        stroke="rgb(52 211 153)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        className="tm-draw"
+        style={{ '--tm-delay': '200ms' } as React.CSSProperties}
+      />
+      <circle cx="14" cy="64" r="5" fill="rgb(52 211 153)" />
+      <g className="tm-float">
+        <line x1="140" y1="20" x2="140" y2="4" stroke="white" strokeOpacity="0.6" strokeWidth="2" />
+        <path d="M140 4 L154 9 L140 14 Z" fill="#FFD233" />
+      </g>
+    </svg>
+  )
+}
+
 function StatCard({
   icon: Icon,
   label,
@@ -105,13 +160,14 @@ function StatCard({
   value: number
   accent?: boolean
 }) {
+  const shown = useCountUp(value)
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+    <div className="tm-fade-up rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
       <div className="flex items-center gap-1.5 text-xs text-white/50">
         <Icon size={14} className={accent ? 'text-emerald-400' : 'text-white/40'} />
         {label}
       </div>
-      <p className={`mt-1 text-2xl font-bold ${accent ? 'text-emerald-300' : 'text-white'}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-bold ${accent ? 'text-emerald-300' : 'text-white'}`}>{shown}</p>
     </div>
   )
 }
@@ -130,9 +186,9 @@ function CreateRoadmapModal({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4" onMouseDown={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200" />
       <div
-        className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl"
+        className="relative w-full max-w-sm overflow-hidden rounded-2xl animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-200 border border-white/10 bg-neutral-900 shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
@@ -206,14 +262,14 @@ function RoadmapRow({ roadmap }: { roadmap: RoadmapSummary }) {
   }
 
   return (
-    <div className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20">
+    <div className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05] hover:shadow-lg hover:shadow-black/30">
       {/* Play / open */}
       <Link
         href={`/roadmap/${roadmap.id}`}
         className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/5 text-emerald-400 transition-colors hover:bg-emerald-500/15"
         aria-label="Open roadmap"
       >
-        <Play size={22} className="ml-0.5" fill="currentColor" />
+        <Play size={22} className="ml-0.5 transition-transform duration-200 group-hover:scale-110" fill="currentColor" />
       </Link>
 
       {/* Title + stats */}
@@ -273,7 +329,7 @@ function RoadmapRow({ roadmap }: { roadmap: RoadmapSummary }) {
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-8 z-20 w-40 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 shadow-2xl">
+              <div className="absolute right-0 top-8 z-20 w-40 origin-top-right overflow-hidden rounded-xl border border-white/10 bg-neutral-900 shadow-2xl animate-in fade-in-0 zoom-in-95 duration-150">
                 <MenuItem icon={Pencil} label="Rename" onClick={() => { setMenuOpen(false); setRenaming(true) }} />
                 <MenuItem icon={Copy} label="Duplicate" onClick={() => { setMenuOpen(false); dup.mutate(roadmap) }} />
                 <MenuItem

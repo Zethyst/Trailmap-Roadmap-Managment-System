@@ -96,7 +96,7 @@ function StepNode({ data, id, selected }: NodeProps<CanvasNode>) {
      *  – carries the drop-shadow filter (follows the pentagon clip path)
      *  – hosts the fold triangles as absolutely-positioned siblings
      */
-    <div className={cn('relative w-[220px] transition-opacity', done && 'opacity-60', selected ? 'note-shadow-selected' : 'note-shadow')}>
+    <div className={cn('tm-pop-in relative w-[220px] transition-opacity', done && 'opacity-60', selected ? 'note-shadow-selected' : 'note-shadow')}>
 
       {/* ── Main card ───────────────────────────────────────────────── */}
       <div

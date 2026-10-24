@@ -43,7 +43,7 @@ function AuthCard() {
 
   return (
     <main className="flex flex-1 items-center justify-center bg-gradient-to-br from-[#06130d] via-[#082016] to-[#0a2a1b] p-6">
-      <div className="relative flex min-h-[500px] w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+      <div className="tm-fade-up relative flex min-h-[500px] w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
         {/* Green diagonal panel */}
         <div
           className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#157347] to-[#0c4a2c]"
@@ -53,7 +53,7 @@ function AuthCard() {
         {/* Left — welcome / toggle */}
         <div className="relative z-10 flex w-1/2 flex-col justify-start gap-6 p-10 pt-16 text-white">
           <div>
-            <h2 className="text-4xl font-extrabold tracking-tight">
+            <h2 key={mode} className="tm-fade-up text-4xl font-extrabold tracking-tight">
               {isLogin ? 'Welcome!' : 'Hello!'}
             </h2>
             <p className="mt-3 text-sm font-semibold leading-relaxed text-white/90">
