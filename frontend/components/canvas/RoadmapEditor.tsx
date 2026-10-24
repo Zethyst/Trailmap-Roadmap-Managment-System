@@ -16,6 +16,7 @@ export function RoadmapEditor({ id }: { id: string }) {
   const setRoadmapId = useCanvasStore((s) => s.setRoadmapId)
   const loadRoadmap = useCanvasStore((s) => s.loadRoadmap)
   const isDirty = useCanvasStore((s) => s.isDirty)
+  const canvasRoadmapId = useCanvasStore((s) => s.roadmapId)
   const loadedRef = useRef<string | null>(null)
 
   // Hydrate the canvas store once the roadmap arrives.
@@ -51,7 +52,8 @@ export function RoadmapEditor({ id }: { id: string }) {
     <div className="flex h-full flex-1 flex-col">
       <EditorTopBar roadmap={roadmap} dirty={isDirty} />
       <div className="min-h-0 flex-1">
-        <Canvas localInit={false} autosaveMode="cloud" />
+        {/* Wait for the store to hold this roadmap, so the canvas never shows another one's nodes or a false empty state. */}
+        {canvasRoadmapId === roadmap.id && <Canvas localInit={false} autosaveMode="cloud" />}
       </div>
     </div>
   )

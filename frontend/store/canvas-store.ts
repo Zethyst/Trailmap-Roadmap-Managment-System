@@ -25,6 +25,8 @@ interface CanvasState {
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect: (connection: Connection) => void
   addNode: (node: CanvasNode) => void
+  /** Adds a whole graph (AI output, a template) with fresh ids, to the right of anything already there. */
+  insertGraph: (graph: { nodes: CanvasNode[]; edges: CanvasEdge[] }) => void
   updateNodeData: (id: string, data: Partial<NodeData>) => void
   deleteNode: (id: string) => void
   selectNode: (id: string | null) => void
@@ -68,6 +70,23 @@ export const useCanvasStore = create<CanvasState>()(
 
       addNode: (node) =>
         set((state) => ({ nodes: [...state.nodes, node], isDirty: true })), //here we have made isDirty true because we want to autosave the roadmap when a new node is added. This ensures that any changes made to the canvas are persisted in the local database, providing a seamless user experience and preventing data loss.
+
+      insertGraph: (graph) =>
+        set((state) => {
+          const offsetX = state.nodes.length ? Math.max(...state.nodes.map((n) => n.position.x)) + 340 : 0
+          const idMap = new Map<string, string>()
+          const nodes = graph.nodes.map((n) => {
+            const id = crypto.randomUUID()
+            idMap.set(n.id, id)
+            return { ...n, id, position: { x: n.position.x + offsetX, y: n.position.y } }
+          })
+          const edges = graph.edges.map((e) => ({
+            id: crypto.randomUUID(),
+            source: idMap.get(e.source) ?? e.source,
+            target: idMap.get(e.target) ?? e.target,
+          }))
+          return { nodes: [...state.nodes, ...nodes], edges: [...state.edges, ...edges], isDirty: true }
+        }),
 
       updateNodeData: (id, data) =>
         set((state) => ({
