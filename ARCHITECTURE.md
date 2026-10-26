@@ -213,14 +213,29 @@ POST   /api/uploads/presign          # { filename, contentType } → { presigned
 
 ### AI
 ```
-POST   /api/ai/generate              # { goal, level, timeBudget?, formatPref? }
-POST   /api/ai/suggest-next          # { nodeId, roadmapId }
-POST   /api/ai/find-resources        # { nodeTitle, nodeDescription }
+POST   /api/ai/generate              # { goal, level, timeBudget? }
+POST   /api/ai/suggest-next          # { roadmapId, nodeId, title? } → { suggestions[3] }
+POST   /api/ai/find-resources        # { roadmapId, nodeId, title? } → { resources[]: { kind, title, query } } (queries, never URLs)
 ```
+
+### Follow, Explore, sign-in links
+```
+GET    /api/roadmaps/following       # shared roadmaps the user follows, with progress
+GET    /api/roadmaps/:id/follow      # { following, followers, isOwner }
+POST   /api/roadmaps/:id/follow      # follow (DELETE to unfollow)
+GET    /api/explore                  # ?q=&tag=&sort=popular|recent&page=&templates=1 (no auth)
+GET    /api/explore/tags             # popular tags (no auth)
+GET    /api/explore/sitemap          # slugs for sitemap.xml (no auth)
+POST   /api/auth/magic-link          # { email, callbackUrl? } → emails a one-time link (Brevo)
+POST   /api/auth/magic-link/verify   # { token } → { email }, once; used by the NextAuth provider
+```
+
+`PATCH /api/roadmaps/:id/graph` takes `baseVersion` (and `force`); a stale version gets a 409 so
+two tabs or devices can't overwrite each other.
 
 ### YouTube
 ```
-GET    /api/youtube/metadata?url=    # Proxies YouTube Data API, returns { title, thumbnail, duration }
+GET    /api/youtube/metadata?url=    # Videos and playlists: Data API v3 with YOUTUBE_API_KEY (duration, itemCount), else oEmbed
 ```
 
 ---
@@ -533,14 +548,16 @@ Pre-login: image stored as Blob in Dexie. On migration, backend re-runs the Clou
 
 ## Environment Variables
 
+The README has the full list with explanations. In short:
+
 ### Frontend (`frontend/.env.local`)
 ```
-NEXTAUTH_URL=http://localhost:3000
 AUTH_SECRET=<random 32-byte hex>
+BACKEND_URL=http://localhost:4000
+PROXY_SECRET=<shared with the backend>
 AUTH_GOOGLE_ID=
 AUTH_GOOGLE_SECRET=
-NEXT_PUBLIC_API_URL=http://localhost:4000
-DATABASE_URL=<neon connection string>
+NEXT_PUBLIC_SITE_URL=https://your-domain
 ```
 
 ### Backend (`backend/.env`)
@@ -548,13 +565,18 @@ DATABASE_URL=<neon connection string>
 PORT=4000
 AUTH_SECRET=<same value as frontend>
 DATABASE_URL=<neon connection string>
+FRONTEND_ORIGIN=http://localhost:3000
+PROXY_SECRET=<shared with the frontend>
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
-OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=
 BREVO_API_KEY=
 BREVO_FROM_EMAIL=noreply@trailmap.app
 YOUTUBE_API_KEY=
+ADMIN_EMAILS=
+TRUST_PROXY_HOPS=1
 ```
 
 ---

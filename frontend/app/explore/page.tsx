@@ -5,19 +5,21 @@ import { PublicNav } from '@/components/site/PublicNav'
 import { listExplore, listExploreTags, type ExploreRoadmap, type ExploreSort } from '@/lib/explore'
 import { cn } from '@/lib/utils'
 
-type SearchParams = Promise<{ q?: string; tag?: string; sort?: string; page?: string }>
+type SearchParams = Promise<{ q?: string; tag?: string; sort?: string; page?: string; templates?: string }>
 
 function parse(sp: Awaited<SearchParams>) {
   const q = sp.q?.trim().slice(0, 100) || undefined
   const tag = sp.tag?.trim().toLowerCase().slice(0, 30) || undefined
   const sort: ExploreSort = sp.sort === 'recent' ? 'recent' : 'popular'
   const page = Math.min(100, Math.max(1, Number.parseInt(sp.page ?? '1', 10) || 1))
-  return { q, tag, sort, page }
+  const templates = sp.templates === '1'
+  return { q, tag, sort, page, templates }
 }
 
 /** /explore with the given filters, dropping defaults so URLs stay short. */
-function href(p: { q?: string; tag?: string; sort?: ExploreSort; page?: number }) {
+function href(p: { q?: string; tag?: string; sort?: ExploreSort; page?: number; templates?: boolean }) {
   const qs = new URLSearchParams()
+  if (p.templates) qs.set('templates', '1')
   if (p.q) qs.set('q', p.q)
   if (p.tag) qs.set('tag', p.tag)
   if (p.sort && p.sort !== 'popular') qs.set('sort', p.sort)
@@ -27,15 +29,15 @@ function href(p: { q?: string; tag?: string; sort?: ExploreSort; page?: number }
 }
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
-  const { q, tag } = parse(await searchParams)
-  const title = tag ? `${tag} roadmaps` : 'Explore roadmaps'
+  const { q, tag, templates } = parse(await searchParams)
+  const title = templates ? 'Template gallery' : tag ? `${tag} roadmaps` : 'Explore roadmaps'
   const description = tag
     ? `Public learning roadmaps tagged “${tag}” on Trailmap. Follow one step by step, or fork it into your own.`
     : 'Browse public learning roadmaps made by the Trailmap community. Follow one step by step, or fork it into your own.'
   return {
     title,
     description,
-    alternates: { canonical: tag ? `/explore?tag=${encodeURIComponent(tag)}` : '/explore' },
+    alternates: { canonical: templates ? '/explore?templates=1' : tag ? `/explore?tag=${encodeURIComponent(tag)}` : '/explore' },
     openGraph: { title: `${title} · Trailmap`, description },
     // Search result pages are endless variations of the same content.
     ...(q ? { robots: { index: false, follow: true } } : {}),
@@ -53,8 +55,8 @@ function updatedAgo(iso: string) {
 }
 
 export default async function ExplorePage({ searchParams }: { searchParams: SearchParams }) {
-  const { q, tag, sort, page } = parse(await searchParams)
-  const [list, tags] = await Promise.all([listExplore({ q, tag, sort, page }), listExploreTags()])
+  const { q, tag, sort, page, templates } = parse(await searchParams)
+  const [list, tags] = await Promise.all([listExplore({ q, tag, sort, page, templates }), listExploreTags()])
   const filtered = Boolean(q || tag)
 
   return (
@@ -63,15 +65,36 @@ export default async function ExplorePage({ searchParams }: { searchParams: Sear
 
       <div className="mx-auto w-full max-w-6xl px-4 pb-16 pt-6 sm:px-6">
         <header className="tm-fade-up">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Explore roadmaps</h1>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{templates ? 'Template gallery' : 'Explore roadmaps'}</h1>
           <p className="mt-2 max-w-2xl text-white/60">
-            Learning paths people have shared. Open one to follow it step by step, or fork it into your own account.
+            {templates
+              ? 'Starter roadmaps picked by the Trailmap team. Use one to get a copy you can change however you like.'
+              : 'Learning paths people have shared. Open one to follow it step by step, or fork it into your own account.'}
           </p>
+          <nav className="mt-5 flex gap-1 border-b border-white/10 text-sm" aria-label="Show">
+            {[
+              { label: 'All roadmaps', on: !templates, to: href({ q, tag, sort }) },
+              { label: 'Templates', on: templates, to: href({ q, tag, sort, templates: true }) },
+            ].map((t) => (
+              <Link
+                key={t.label}
+                href={t.to}
+                aria-current={t.on ? 'page' : undefined}
+                className={cn(
+                  '-mb-px border-b-2 px-3 py-2 transition-colors',
+                  t.on ? 'border-emerald-400 font-medium text-white' : 'border-transparent text-white/55 hover:text-white',
+                )}
+              >
+                {t.label}
+              </Link>
+            ))}
+          </nav>
         </header>
 
         {/* Search + sort. A plain GET form, so it works before JavaScript loads. */}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <form action="/explore" className="relative flex-1" role="search">
+            {templates && <input type="hidden" name="templates" value="1" />}
             {tag && <input type="hidden" name="tag" value={tag} />}
             {sort !== 'popular' && <input type="hidden" name="sort" value={sort} />}
             <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
@@ -89,7 +112,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Sear
             {(['popular', 'recent'] as const).map((s) => (
               <Link
                 key={s}
-                href={href({ q, tag, sort: s })}
+                href={href({ q, tag, sort: s, templates })}
                 role="tab"
                 aria-selected={sort === s}
                 className={cn(
@@ -106,9 +129,9 @@ export default async function ExplorePage({ searchParams }: { searchParams: Sear
         {/* Tag filter */}
         {tags && tags.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2" aria-label="Filter by tag">
-            <TagChip href={href({ q, sort })} active={!tag} label="All" />
+            <TagChip href={href({ q, sort, templates })} active={!tag} label="All" />
             {tags.tags.map((t) => (
-              <TagChip key={t.tag} href={href({ q, sort, tag: t.tag })} active={tag === t.tag} label={`#${t.tag}`} count={t.count} />
+              <TagChip key={t.tag} href={href({ q, sort, tag: t.tag, templates })} active={tag === t.tag} label={`#${t.tag}`} count={t.count} />
             ))}
           </div>
         )}
@@ -118,7 +141,9 @@ export default async function ExplorePage({ searchParams }: { searchParams: Sear
           <p className="mt-12 text-center text-white/60">Couldn’t load roadmaps right now. Please try again in a moment.</p>
         ) : list.roadmaps.length === 0 ? (
           <div className="mt-12 rounded-2xl border border-dashed border-white/15 p-10 text-center">
-            {filtered ? (
+            {templates && !filtered ? (
+              <p className="text-white/70">No templates in the gallery yet.</p>
+            ) : filtered ? (
               <>
                 <p className="text-white/70">No public roadmaps match{q ? ` “${q}”` : ''}{tag ? ` in #${tag}` : ''}.</p>
                 <Link href="/explore" className="mt-3 inline-block text-sm font-medium text-emerald-300 hover:underline">
@@ -147,13 +172,13 @@ export default async function ExplorePage({ searchParams }: { searchParams: Sear
             {(page > 1 || list.hasMore) && (
               <nav className="mt-10 flex items-center justify-center gap-3 text-sm" aria-label="Pages">
                 {page > 1 && (
-                  <Link href={href({ q, tag, sort, page: page - 1 })} className="rounded-lg border border-white/10 px-4 py-2 text-white/80 hover:bg-white/5">
+                  <Link href={href({ q, tag, sort, page: page - 1, templates })} className="rounded-lg border border-white/10 px-4 py-2 text-white/80 hover:bg-white/5">
                     ← Previous
                   </Link>
                 )}
                 <span className="text-white/40">Page {page}</span>
                 {list.hasMore && (
-                  <Link href={href({ q, tag, sort, page: page + 1 })} className="rounded-lg border border-white/10 px-4 py-2 text-white/80 hover:bg-white/5">
+                  <Link href={href({ q, tag, sort, page: page + 1, templates })} className="rounded-lg border border-white/10 px-4 py-2 text-white/80 hover:bg-white/5">
                     Next →
                   </Link>
                 )}
@@ -188,6 +213,11 @@ function RoadmapCard({ roadmap: r, sort, q }: { roadmap: ExploreRoadmap; sort: E
   return (
     // The title link is stretched over the card; tag links sit above it, so links never nest.
     <article className="tm-lift relative flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-emerald-400/30 hover:bg-white/[0.05]">
+      {r.isTemplate && (
+        <span className="mb-2 inline-flex w-fit items-center rounded-full bg-amber-300/15 px-2 py-0.5 text-[11px] font-medium text-amber-200">
+          Template
+        </span>
+      )}
       <h2 className="text-base font-semibold leading-snug text-white">
         <Link href={`/r/${r.shareSlug}`} className="after:absolute after:inset-0 after:rounded-2xl focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-emerald-400/60">
           {r.title}

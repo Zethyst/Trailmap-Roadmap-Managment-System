@@ -21,14 +21,16 @@ function cacheFor(res: import('express').Response, seconds: number) {
 }
 
 /**
- * GET /api/explore?q=&tag=&sort=popular|recent&page= — public roadmaps for the
- * explore page. No auth. `q` matches title, description or a tag.
+ * GET /api/explore?q=&tag=&sort=popular|recent&page=&templates=1 — public
+ * roadmaps for the explore page and template gallery. No auth. `q` matches
+ * title, description or a tag.
  */
 router.get('/', async (req, res, next) => {
   try {
-    const { q, tag, sort, page } = exploreQuerySchema.parse(req.query)
+    const { q, tag, sort, page, templates } = exploreQuerySchema.parse(req.query)
     const where: Prisma.RoadmapWhereInput = {
       ...LISTED,
+      ...(templates ? { isTemplate: true } : {}),
       ...(tag ? { tags: { has: tag } } : {}),
       ...(q
         ? {
@@ -47,7 +49,7 @@ router.get('/', async (req, res, next) => {
       orderBy: sort === 'recent' ? [{ updatedAt: 'desc' }] : [{ viewCount: 'desc' }, { updatedAt: 'desc' }],
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE + 1,
-      select: { id: true, title: true, description: true, tags: true, shareSlug: true, viewCount: true, updatedAt: true },
+      select: { id: true, title: true, description: true, tags: true, shareSlug: true, viewCount: true, updatedAt: true, isTemplate: true },
     })
     const items = rows.slice(0, PAGE_SIZE)
     const ids = items.map((r) => r.id)
@@ -79,6 +81,7 @@ router.get('/', async (req, res, next) => {
         forkCount: forks.get(r.id) ?? 0,
         steps: count(r.id, 'step'),
         milestones: count(r.id, 'milestone'),
+        isTemplate: r.isTemplate,
         updatedAt: r.updatedAt,
       })),
       page,

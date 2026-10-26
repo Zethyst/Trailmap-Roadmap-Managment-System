@@ -20,6 +20,8 @@ export const updateRoadmapSchema = z.object({
   tags: tagsSchema.optional(),
   visibility: visibilitySchema.optional(),
   coverUrl: z.string().url().nullable().optional(),
+  /** Admins only: show it in the template gallery. */
+  isTemplate: z.boolean().optional(),
 })
 
 const graphNodeSchema = z.object({
@@ -43,6 +45,12 @@ const graphEdgeSchema = z.object({
 export const graphSchema = z.object({
   nodes: z.array(graphNodeSchema).max(2000),
   edges: z.array(graphEdgeSchema).max(5000),
+})
+
+/** PATCH /graph: `baseVersion` is the version the client's graph was loaded from; `force` overwrites a newer one. */
+export const graphSaveSchema = graphSchema.extend({
+  baseVersion: z.number().int().min(0).optional(),
+  force: z.boolean().optional(),
 })
 
 export type GraphInput = z.infer<typeof graphSchema>
@@ -82,4 +90,13 @@ export const exploreQuerySchema = z.object({
   tag: z.string().trim().toLowerCase().max(30).optional(),
   sort: z.enum(['popular', 'recent']).default('popular'),
   page: z.coerce.number().int().min(1).max(100).default(1),
+  /** "1": only roadmaps featured in the template gallery. */
+  templates: z.enum(['1']).optional(),
+})
+
+/** suggest-next / find-resources: the step, plus its title in case it hasn't been saved yet. */
+export const aiNodeSchema = z.object({
+  roadmapId: z.string().min(1),
+  nodeId: z.string().min(1),
+  title: z.string().trim().max(200).optional(),
 })

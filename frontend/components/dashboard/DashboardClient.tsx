@@ -15,8 +15,10 @@ import {
   useDeleteRoadmap,
   useDuplicateRoadmap,
   useUpdateRoadmap,
+  useFollowing,
+  useUnfollow,
 } from '@/hooks/use-roadmaps'
-import type { ProgressSummary, RoadmapSummary } from '@/lib/api-client'
+import type { FollowedRoadmap, ProgressSummary, RoadmapSummary } from '@/lib/api-client'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useCountUp } from '@/hooks/use-motion'
 import { CircularProgress } from './CircularProgress'
@@ -92,8 +94,60 @@ export function DashboardClient() {
         </div>
       )}
 
+      <FollowingSection />
+
       {creating && <CreateRoadmapModal onClose={() => setCreating(false)} />}
     </main>
+  )
+}
+
+/** Roadmaps by other people the user follows; hidden until they follow one. */
+function FollowingSection() {
+  const { data: following } = useFollowing()
+  if (!following?.length) return null
+  return (
+    <section className="tm-fade-up mt-10" aria-labelledby="following-heading">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 id="following-heading" className="text-lg font-semibold text-white">Following</h2>
+        <Link href="/explore" className="text-sm text-emerald-300 hover:underline">Find more</Link>
+      </div>
+      <div className="space-y-2">
+        {following.map((r) => (
+          <FollowingRow key={r.id} roadmap={r} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function FollowingRow({ roadmap: r }: { roadmap: FollowedRoadmap }) {
+  const unfollow = useUnfollow()
+  const pct = r.totalSteps > 0 ? (r.doneSteps / r.totalSteps) * 100 : 0
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:p-4">
+      <CircularProgress value={pct} size={40} />
+      <div className="min-w-0 flex-1">
+        <Link href={`/r/${r.shareSlug}`} className="block truncate font-medium text-white hover:underline">
+          {r.title}
+        </Link>
+        <p className="text-xs text-white/45">
+          {r.doneSteps}/{r.totalSteps} steps done
+        </p>
+      </div>
+      <Link
+        href={`/r/${r.shareSlug}`}
+        className="hidden rounded-lg border border-emerald-500/40 px-4 py-1.5 text-sm font-medium text-emerald-300 hover:bg-emerald-500/10 sm:inline-block"
+      >
+        {r.doneSteps > 0 ? 'Resume' : 'Start'}
+      </Link>
+      <button
+        onClick={() => unfollow.mutate(r.id)}
+        disabled={unfollow.isPending}
+        className="rounded-lg px-2 py-1.5 text-xs text-white/45 hover:bg-white/5 hover:text-white disabled:opacity-50"
+      >
+        Unfollow
+      </button>
+    </div>
   )
 }
 

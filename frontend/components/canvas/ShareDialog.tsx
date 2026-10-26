@@ -26,17 +26,18 @@ function cleanTag(raw: string) {
   return raw.trim().toLowerCase().replace(/^#/, '').replace(/[^\p{L}\p{N} +#.-]/gu, '').replace(/\s+/g, ' ').slice(0, 30)
 }
 
-type ShareableRoadmap = Pick<RoadmapSummary, 'id' | 'title' | 'visibility' | 'shareSlug' | 'description' | 'tags'>
+type ShareableRoadmap = Pick<RoadmapSummary, 'id' | 'title' | 'visibility' | 'shareSlug' | 'description' | 'tags' | 'isTemplate' | 'canFeature'>
 
 /**
  * Choose who can see a roadmap. Nothing changes until "Save", so picking an
  * option by accident can't publish anything.
  */
 export function ShareDialog({ roadmap, onClose }: { roadmap: ShareableRoadmap; onClose: () => void }) {
-  const update = useUpdateRoadmap()
+  const update = useUpdateRoadmap({ quiet: true })
   const [visibility, setVisibility] = useState<Visibility>(roadmap.visibility)
   const [description, setDescription] = useState(roadmap.description ?? '')
   const [tags, setTags] = useState<string[]>(roadmap.tags ?? [])
+  const [featured, setFeatured] = useState(Boolean(roadmap.isTemplate))
   const [tagInput, setTagInput] = useState('')
   // The saved state, which the link and "Stop sharing" reflect (not the unsaved choice).
   const [saved, setSaved] = useState({
@@ -44,6 +45,7 @@ export function ShareDialog({ roadmap, onClose }: { roadmap: ShareableRoadmap; o
     shareSlug: roadmap.shareSlug,
     description: roadmap.description ?? '',
     tags: roadmap.tags ?? [],
+    featured: Boolean(roadmap.isTemplate),
   })
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +64,8 @@ export function ShareDialog({ roadmap, onClose }: { roadmap: ShareableRoadmap; o
     visibility !== saved.visibility ||
     description.trim() !== saved.description ||
     tags.join(',') !== saved.tags.join(',') ||
-    cleanTag(tagInput) !== ''
+    cleanTag(tagInput) !== '' ||
+    (visibility === 'public' && featured !== saved.featured)
 
   /** Adds one or more comma-separated tags (typed or pasted). */
   function addTag(raw: string) {
@@ -91,9 +94,16 @@ export function ShareDialog({ roadmap, onClose }: { roadmap: ShareableRoadmap; o
       const finalTags = pendingTag && !tags.includes(pendingTag) ? [...tags, pendingTag].slice(0, MAX_TAGS) : tags
       const { roadmap: updated } = await update.mutateAsync({
         id: roadmap.id,
-        patch: { visibility: next, description: description.trim(), tags: finalTags },
+        patch: {
+          visibility: next,
+          description: description.trim(),
+          tags: finalTags,
+          // Only admins see the option; the gallery only lists public roadmaps.
+          ...(roadmap.canFeature ? { isTemplate: next === 'public' && featured } : {}),
+        },
       })
       setTags(finalTags)
+      setFeatured(Boolean(updated.isTemplate))
       setTagInput('')
       setVisibility(updated.visibility)
       setDescription(updated.description ?? '')
@@ -102,6 +112,7 @@ export function ShareDialog({ roadmap, onClose }: { roadmap: ShareableRoadmap; o
         shareSlug: updated.shareSlug,
         description: updated.description ?? '',
         tags: updated.tags,
+        featured: Boolean(updated.isTemplate),
       })
     } catch {
       setError('Couldn’t save sharing settings. Please try again.')
@@ -220,6 +231,21 @@ export function ShareDialog({ roadmap, onClose }: { roadmap: ShareableRoadmap; o
                 </div>
               </div>
             </div>
+          )}
+
+          {visibility === 'public' && roadmap.canFeature && (
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={featured}
+                onChange={(e) => setFeatured(e.target.checked)}
+                className="mt-0.5 accent-amber-400"
+              />
+              <span>
+                <span className="block text-sm font-medium text-white">Feature in the template gallery</span>
+                <span className="block text-xs text-white/50">Admins only. Shown under Templates on Explore and when starting a new roadmap.</span>
+              </span>
+            </label>
           )}
 
           {shareUrl && (

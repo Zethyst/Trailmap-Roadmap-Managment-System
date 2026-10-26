@@ -11,6 +11,10 @@ import { ProgressMeter } from './ProgressMeter'
 import { ExportMenu } from './ExportMenu'
 import { Canvas } from './Canvas'
 import { ShareDialog, VISIBILITY_META } from './ShareDialog'
+import { ConflictBanner, DraftBanner } from './SyncBanners'
+import { clearCloudDraft, getCloudDraft, type CloudDraft } from '@/lib/local-db'
+import { sameGraph } from '@/lib/same-graph'
+import { toast } from '@/store/toast-store'
 
 export function RoadmapEditor({ id }: { id: string }) {
   const { data: roadmap, isLoading, isError } = useRoadmap(id)
@@ -19,6 +23,8 @@ export function RoadmapEditor({ id }: { id: string }) {
   const isDirty = useCanvasStore((s) => s.isDirty)
   const saveFailed = useCanvasStore((s) => s.saveFailed)
   const canvasRoadmapId = useCanvasStore((s) => s.roadmapId)
+  const conflict = useCanvasStore((s) => s.conflict)
+  const [draft, setDraft] = useState<CloudDraft | null>(null)
   const loadedRef = useRef<string | null>(null)
 
   // Hydrate the canvas store once the roadmap arrives.
@@ -27,10 +33,32 @@ export function RoadmapEditor({ id }: { id: string }) {
       loadedRef.current = roadmap.id
       setRoadmapId(roadmap.id)
       loadRoadmap(roadmap.nodes ?? [], roadmap.edges ?? [])
+      useCanvasStore.getState().setVersion(roadmap.version ?? null)
       useCanvasStore.temporal.getState().clear()
       useProgressStore.getState().load(roadmap.id)
+      // Unsaved edits left on this device? Offer them back, unless the server already has exactly that.
+      getCloudDraft(roadmap.id)
+        .then((d) => {
+          if (!d) return
+          if (sameGraph(d, { nodes: roadmap.nodes ?? [], edges: roadmap.edges ?? [] })) return clearCloudDraft(roadmap.id)
+          setDraft(d)
+        })
+        .catch(() => {})
     }
   }, [roadmap, setRoadmapId, loadRoadmap])
+
+  // The query refetches when the window regains focus. If another tab or device
+  // saved a newer version and nothing here is unsaved, show it; with unsaved
+  // edits, the next save is refused instead and the conflict banner asks.
+  useEffect(() => {
+    if (!roadmap || loadedRef.current !== roadmap.id || roadmap.version == null) return
+    const s = useCanvasStore.getState()
+    if (s.roadmapId !== roadmap.id || s.version == null || roadmap.version <= s.version || s.isDirty || s.conflict) return
+    s.loadRoadmap(roadmap.nodes ?? [], roadmap.edges ?? [])
+    s.setVersion(roadmap.version)
+    useCanvasStore.temporal.getState().clear()
+    toast.info('Updated with changes saved in another tab or on another device.')
+  }, [roadmap])
 
   if (isLoading) {
     return (
@@ -53,6 +81,8 @@ export function RoadmapEditor({ id }: { id: string }) {
   return (
     <div className="flex h-full flex-1 flex-col">
       <EditorTopBar roadmap={roadmap} dirty={isDirty} saveFailed={saveFailed} />
+      {conflict && <ConflictBanner roadmapId={roadmap.id} />}
+      {draft && !conflict && <DraftBanner draft={draft} onDone={() => setDraft(null)} />}
       <div className="min-h-0 flex-1">
         {/* Wait for the store to hold this roadmap, so the canvas never shows another one's nodes or a false empty state. */}
         {canvasRoadmapId === roadmap.id && <Canvas localInit={false} autosaveMode="cloud" />}
