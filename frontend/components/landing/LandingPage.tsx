@@ -25,7 +25,10 @@ export function LandingPage() {
           <span className="text-emerald-400">▲</span> Trailmap
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/try" className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 hover:text-white">
+          <Link href="/explore" className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 hover:text-white">
+            Explore
+          </Link>
+          <Link href="/try" className="hidden rounded-lg px-4 py-2 text-sm font-medium text-white/70 hover:text-white sm:block">
             Try the canvas
           </Link>
           <Link
