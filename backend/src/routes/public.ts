@@ -21,10 +21,10 @@ router.get('/:slug', async (req, res, next) => {
 
     // Best-effort view count; don't block the response on it. `?preview=1`
     // (the link-preview image) skips it, since crawlers aren't views.
+    // Raw SQL so it doesn't bump updated_at: Prisma's @updatedAt fires on any
+    // update, and a view isn't an edit (it would reorder "recently updated").
     if (req.query.preview !== '1') {
-      prisma.roadmap
-        .update({ where: { id: roadmap.id }, data: { viewCount: { increment: 1 } } })
-        .catch(() => {})
+      prisma.$executeRaw`UPDATE roadmaps SET view_count = view_count + 1 WHERE id = ${roadmap.id}`.catch(() => {})
     }
 
     res.json({ roadmap: serializeRoadmap(roadmap) })

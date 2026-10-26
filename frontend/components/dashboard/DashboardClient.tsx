@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import {
-  Plus, MoreVertical, Copy, Trash2, Pencil, Globe, Lock, Link2, X, Loader2,
+  Plus, MoreVertical, Copy, Trash2, Pencil, Share2, Compass, X, Loader2,
   Play, MapPin, StickyNote, Trophy, Boxes, Map, CheckCircle2, Activity, Flame, ArrowRight,
 } from 'lucide-react'
 import {
@@ -16,16 +16,12 @@ import {
   useDuplicateRoadmap,
   useUpdateRoadmap,
 } from '@/hooks/use-roadmaps'
-import type { ProgressSummary, RoadmapSummary, Visibility } from '@/lib/api-client'
+import type { ProgressSummary, RoadmapSummary } from '@/lib/api-client'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useCountUp } from '@/hooks/use-motion'
 import { CircularProgress } from './CircularProgress'
+import { ShareDialog, VISIBILITY_META } from '@/components/canvas/ShareDialog'
 
-const VIS_META: Record<Visibility, { icon: typeof Lock; label: string }> = {
-  private: { icon: Lock, label: 'Private' },
-  unlisted: { icon: Link2, label: 'Unlisted' },
-  public: { icon: Globe, label: 'Public' },
-}
 
 export function DashboardClient() {
   const { data: roadmaps, isLoading, isError } = useRoadmaps()
@@ -40,6 +36,12 @@ export function DashboardClient() {
           <p className="text-sm text-white/50">Build, organise and share your learning paths</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/explore"
+            className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white"
+          >
+            <Compass size={16} /> Explore
+          </Link>
           <button
             onClick={() => setCreating(true)}
             className="group flex items-center gap-2 whitespace-nowrap rounded-xl bg-white px-4 py-2 text-sm font-medium text-gray-900 transition-all hover:-translate-y-0.5 hover:bg-gray-100 active:translate-y-0"
@@ -328,13 +330,14 @@ function Stat({ icon: Icon, count, label }: { icon: typeof MapPin; count: number
 function RoadmapRow({ roadmap }: { roadmap: RoadmapSummary }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const [title, setTitle] = useState(roadmap.title)
 
   const del = useDeleteRoadmap()
   const dup = useDuplicateRoadmap()
   const update = useUpdateRoadmap()
 
-  const Vis = VIS_META[roadmap.visibility]
+  const Vis = VISIBILITY_META[roadmap.visibility]
   const c = roadmap.counts ?? { step: 0, milestone: 0, note: 0, group: 0 }
   const total = roadmap.totalSteps ?? 0
   const done = roadmap.doneSteps ?? 0
@@ -421,6 +424,7 @@ function RoadmapRow({ roadmap }: { roadmap: RoadmapSummary }) {
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
               <div className="absolute right-0 top-8 z-20 w-40 origin-top-right overflow-hidden rounded-xl border border-white/10 bg-neutral-900 shadow-2xl animate-in fade-in-0 zoom-in-95 duration-150">
                 <MenuItem icon={Pencil} label="Rename" onClick={() => { setMenuOpen(false); setRenaming(true) }} />
+                <MenuItem icon={Share2} label="Share…" onClick={() => { setMenuOpen(false); setSharing(true) }} />
                 <MenuItem icon={Copy} label="Duplicate" onClick={() => { setMenuOpen(false); dup.mutate(roadmap) }} />
                 <MenuItem
                   icon={Trash2}
@@ -436,6 +440,7 @@ function RoadmapRow({ roadmap }: { roadmap: RoadmapSummary }) {
           )}
         </div>
       </div>
+      {sharing && <ShareDialog roadmap={roadmap} onClose={() => setSharing(false)} />}
     </div>
   )
 }

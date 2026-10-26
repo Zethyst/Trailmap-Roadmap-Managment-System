@@ -46,11 +46,28 @@
 | --- | --- |
 | <img src="docs/screenshots/new-roadmap.png" alt="An empty roadmap showing three options: add your first step, generate with AI, or start from a template" /> | <img src="docs/screenshots/template.png" alt="The 'Web development basics' template on the canvas, with its first step marked Next up" /> |
 
-**Share and fork.** Publish a roadmap to get a public read-only link. It works on phones. Signed-in visitors can track their own progress on it or fork it into their account. Shared links unfurl with a preview card on WhatsApp, Slack, iMessage and X. Roadmaps also export to PNG, PDF or JSON.
+**Share and fork.** The **Share** button (in the editor, or a roadmap's menu on the dashboard) sets who can see it:
+- **Private:** only you.
+- **Unlisted:** anyone with the link can view it, but it isn't listed anywhere and isn't indexed by search engines.
+- **Public:** also listed on Explore and in the sitemap, with a description and tags.
+
+Nothing changes until you save, and **Stop sharing** turns the link off. Sharing again brings back the same link.
+
+<p align="center">
+  <img src="docs/screenshots/share-dialog.png" alt="The share dialog with Private, Unlisted and Public options, Public selected, plus a description and tags" width="900" />
+</p>
+
+Shared roadmaps open without an account and work on phones. Signed-in visitors can track their own progress on one or fork it into their account. Shared links unfurl with a preview card on WhatsApp, Slack, iMessage and X. Roadmaps also export to PNG, PDF or JSON.
 
 | Shared roadmap on a phone | Link preview |
 | --- | --- |
 | <img src="docs/screenshots/shared-mobile.png" alt="A shared roadmap in the read-only viewer on a phone, with a Fork button" width="300" /> | <img src="docs/screenshots/link-preview.png" alt="The generated link-preview image for a shared roadmap, showing its title, step counts and first three steps" /> |
+
+**Explore.** `/explore` lists every public roadmap, with no sign-in needed. You can search by title, description or tag, filter by tag, and sort by most viewed or recently updated. Each card shows step counts, views and forks.
+
+<p align="center">
+  <img src="docs/screenshots/explore.png" alt="The Explore page: a search box, sort tabs, tag filters and a grid of public roadmaps with step, view and fork counts" width="900" />
+</p>
 
 **Local-first.** `/try` gives anyone a full canvas with no account. It saves to the browser (IndexedDB), and after signing in you can move those roadmaps into your account in one click.
 
@@ -71,12 +88,12 @@ The browser only talks to the Next.js app. Signed-in API calls go through a same
 ```
 .
 ├── frontend/          Next.js app (UI, auth, API proxy)
-│   ├── app/           Routes: /, /try, /login, /dashboard, /roadmap/[id], /r/[slug]
+│   ├── app/           Routes: /, /explore, /try, /login, /dashboard, /roadmap/[id], /r/[slug]
 │   ├── components/    Canvas, nodes, content blocks, dashboard, landing
 │   ├── store/         Zustand stores (canvas, progress, UI)
 │   └── lib/           API client, local DB, path state, templates
 ├── backend/           Express REST API
-│   ├── src/routes/    roadmaps, public (/r), progress, ai, uploads, youtube
+│   ├── src/routes/    roadmaps, public (/r), explore, progress, ai, uploads, youtube
 │   └── prisma/        Database schema
 └── docs/screenshots/  Images used in this README
 ```

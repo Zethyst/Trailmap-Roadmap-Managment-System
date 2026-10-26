@@ -47,9 +47,17 @@ export function PublicRoadmapView({ roadmap }: { roadmap: RoadmapFull }) {
   return (
     <div className="flex h-full flex-1 flex-col">
       <header className="relative z-50 flex items-center justify-between gap-3 border-b border-white/10 bg-neutral-950/60 px-5 py-3 backdrop-blur">
-        <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold text-white">{roadmap.title}</h1>
-          <p className="text-xs text-white/40">Read-only · shared roadmap</p>
+        <div className="flex min-w-0 items-center gap-3">
+          {/* Visitors arriving by link can find more roadmaps from here. */}
+          <Link href="/explore" title="Explore more roadmaps" className="shrink-0 text-lg font-bold text-emerald-400 hover:text-emerald-300">
+            ▲<span className="sr-only">Explore more roadmaps on Trailmap</span>
+          </Link>
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-semibold text-white">{roadmap.title}</h1>
+            <p className="truncate text-xs text-white/40">
+              Read-only · {roadmap.viewCount.toLocaleString('en')} view{roadmap.viewCount === 1 ? '' : 's'}
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <ExportMenu title={roadmap.title} />

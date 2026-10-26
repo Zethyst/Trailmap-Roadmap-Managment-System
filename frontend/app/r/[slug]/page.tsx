@@ -32,6 +32,8 @@ export async function generateMetadata({
     title: roadmap.title,
     description,
     alternates: { canonical: `/r/${slug}` },
+    // Unlisted means "anyone with the link", not "anyone searching".
+    ...(roadmap.visibility !== 'public' ? { robots: { index: false, follow: false } } : {}),
     openGraph: { title: shareTitle, description, type: 'article', url: `/r/${slug}` },
     twitter: { card: 'summary_large_image', title: shareTitle, description },
   }

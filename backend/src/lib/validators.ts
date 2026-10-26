@@ -8,10 +8,16 @@ export const createRoadmapSchema = z.object({
   description: z.string().max(2000).optional(),
 })
 
+/** Tags are shown and filtered on the explore page: lowercase, trimmed, unique, a handful at most. */
+export const tagsSchema = z
+  .array(z.string().trim().toLowerCase().min(1).max(30))
+  .max(8)
+  .transform((tags) => [...new Set(tags)])
+
 export const updateRoadmapSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
-  tags: z.array(z.string().max(40)).max(20).optional(),
+  tags: tagsSchema.optional(),
   visibility: visibilitySchema.optional(),
   coverUrl: z.string().url().nullable().optional(),
 })
@@ -69,4 +75,11 @@ export const importSchema = z.object({
     )
     .min(1)
     .max(50),
+})
+
+export const exploreQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
+  tag: z.string().trim().toLowerCase().max(30).optional(),
+  sort: z.enum(['popular', 'recent']).default('popular'),
+  page: z.coerce.number().int().min(1).max(100).default(1),
 })

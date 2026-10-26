@@ -3,6 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import roadmapsRouter from './routes/roadmaps'
 import publicRouter from './routes/public'
+import exploreRouter from './routes/explore'
 import progressRouter from './routes/progress'
 import aiRouter from './routes/ai'
 import uploadsRouter from './routes/uploads'
@@ -28,6 +29,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/roadmaps', roadmapsRouter)
 app.use('/api/r', publicRouter)
+app.use('/api/explore', exploreRouter)
 app.use('/api/progress', progressRouter)
 app.use('/api/ai', aiRouter)
 app.use('/api/uploads', uploadsRouter)
